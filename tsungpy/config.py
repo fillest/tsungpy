@@ -94,6 +94,26 @@ class XMLBuilder (object):
 	def users (self, **kwargs):
 		return self._subelement('users', **kwargs)
 
+	def dyn_variable (self, **kwargs):
+		return self._subelement('dyn_variable', **kwargs)
+
+
+	def setdynvars (self, var_names, **kwargs):
+		@nested
+		def _setdynvars (self):
+			return self._subelement('setdynvars', **kwargs)
+
+		with _setdynvars(self) as el:
+			for var_name in var_names:
+				self._subelement('var', name=var_name)
+		return el
+	#~
+	#~ def setdynvars (self, var_names, **kwargs):
+		#~ with self._subelement('setdynvars', **kwargs) as el:
+			#~ for var_name in var_names:
+				#~ self._subelement('var', name=name)
+		#~ return el
+
 	options = simple_element('options')
 
 	def set_default_options (self):
@@ -117,7 +137,9 @@ class XMLBuilder (object):
 	def for_ (self, from_, to, incr=1, var="counter"):
 		return self._subelement('for', to=str(to), incr=str(incr), var=var, **{'from': str(from_)})
 
-	request = simple_element('request')
+	@nested
+	def request (self, subst=False):
+		return self._subelement('request', subst=('true' if subst else 'false'))
 
 	@nested
 	def http (self, url, method='GET', version='1.1'):
@@ -125,3 +147,10 @@ class XMLBuilder (object):
 
 	def http_header (self, name, value):
 		return self._subelement('http_header', name=name, value=value)
+
+	def eval_into_dynvar (self, var_name, code):
+		self.setdynvars([var_name], sourcetype='eval', code=code)
+
+	@nested
+	def foreach (self, name, in_):
+		return self._subelement('foreach', name=name, **{'in': in_})
