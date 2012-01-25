@@ -71,9 +71,13 @@ class XMLBuilder (object):
 
 	clients = simple_element('clients')
 
-	def client (self, host="localhost", use_controller_vm='true', maxusers=60000):
-		#+cpu?
-		return self._subelement('client', host=host, use_controller_vm=use_controller_vm, maxusers=str(maxusers))
+	def client (self, host="localhost", use_controller_vm='true', maxusers=60000, cpu=None, weight=None):
+		e_client = self._subelement('client', host=host, use_controller_vm=use_controller_vm, maxusers=str(maxusers))
+		if cpu:
+			e_client.set('cpu', str(cpu))
+		if weight:
+			e_client.set('weight', str(weight))
+		return e_client
 
 	servers = simple_element('servers')
 
@@ -134,6 +138,10 @@ class XMLBuilder (object):
 		return self._subelement('session', name=name, probability=str(probability), type=type)
 
 	@nested
+	def transaction (self, name):
+		return self._subelement('transaction', name=name)
+
+	@nested
 	def for_ (self, from_, to, incr=1, var="counter"):
 		return self._subelement('for', to=str(to), incr=str(incr), var=var, **{'from': str(from_)})
 
@@ -147,6 +155,9 @@ class XMLBuilder (object):
 
 	def http_header (self, name, value):
 		return self._subelement('http_header', name=name, value=value)
+
+	def www_authenticate (self, username, password):
+		return self._subelement('www_authenticate', userid=username, passwd=password)
 
 	def eval_into_dynvar (self, var_name, code):
 		self.setdynvars([var_name], sourcetype='eval', code=code)
