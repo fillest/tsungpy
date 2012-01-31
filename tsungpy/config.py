@@ -11,6 +11,10 @@ from decorator import decorator
 SECOND = 'second'
 MINUTE = 'minute'
 
+GET = 'GET'
+POST = 'POST'
+DELETE = 'DELETE'
+
 
 def nested(method):
 	@contextmanager
@@ -71,12 +75,20 @@ class XMLBuilder (object):
 
 	clients = simple_element('clients')
 
-	def client (self, host="localhost", use_controller_vm='true', maxusers=60000, cpu=None, weight=None):
-		e_client = self._subelement('client', host=host, use_controller_vm=use_controller_vm, maxusers=str(maxusers))
-		if cpu:
-			e_client.set('cpu', str(cpu))
-		if weight:
-			e_client.set('weight', str(weight))
+	def client (self, host="localhost", use_controller_vm='true', maxusers=60000, cpu=None, weight=None, ips=None):
+		@nested
+		def _client (self):
+			return self._subelement('client', host=host, use_controller_vm=use_controller_vm, maxusers=str(maxusers))
+
+		with _client(self) as e_client:
+			if cpu:
+				e_client.set('cpu', str(cpu))
+			if weight:
+				e_client.set('weight', str(weight))
+			if ips:
+				for ip in ips:
+					self._subelement('ip', value=ip)
+
 		return e_client
 
 	servers = simple_element('servers')
@@ -101,7 +113,6 @@ class XMLBuilder (object):
 	def dyn_variable (self, **kwargs):
 		return self._subelement('dyn_variable', **kwargs)
 
-
 	def setdynvars (self, var_names, **kwargs):
 		@nested
 		def _setdynvars (self):
@@ -121,6 +132,8 @@ class XMLBuilder (object):
 	options = simple_element('options')
 
 	def set_default_options (self):
+		self._subelement('option', name='ports_range', min="1025", max="65535")
+
 		e_option_user_agent = self._subelement('option', type='ts_http', name='user_agent')
 		e_user_agent = et.SubElement(e_option_user_agent, 'user_agent', probability="100")
 		e_user_agent.text = "tsung"
@@ -150,8 +163,11 @@ class XMLBuilder (object):
 		return self._subelement('request', subst=('true' if subst else 'false'))
 
 	@nested
-	def http (self, url, method='GET', version='1.1'):
-		return self._subelement('http', url=url, method=method, version=version)
+	def http (self, url, method=GET, version='1.1', contents=None, **other):
+		element = self._subelement('http', url=url, method=method, version=version, **other)
+		if contents:
+			element.set('contents', contents)
+		return element
 
 	def http_header (self, name, value):
 		return self._subelement('http_header', name=name, value=value)
@@ -161,6 +177,11 @@ class XMLBuilder (object):
 
 	def eval_into_dynvar (self, var_name, code):
 		self.setdynvars([var_name], sourcetype='eval', code=code)
+
+	def match (self, pattern, **params):
+		element = self._subelement('match', **params)
+		element.text = pattern
+		return element
 
 	@nested
 	def foreach (self, name, in_):
